@@ -1,31 +1,40 @@
 # 铁甲回廊 · Iron Corridor
 
-**坦克大战 × Roguelike** — 浏览器直玩的俯视角坦克 Roguelike。程序化生成回廊、
-三选一强化、每 5 层 BOSS、废料兑换永久强化，一命通关 30 层。
+在程序化回廊中驾驶坦克作战，以三选一强化和废料升级挑战更深层地牢。
 
-![项目截图](screenshot.png)
+A tank dungeon roguelike with procedural corridors, upgrades, bosses and scrap progression.
 
-- **在线游玩**：<https://holynova.github.io/tank-roguelike/>
-- **源码仓库**：<https://github.com/holynova/tank-roguelike>
+[在线体验](https://tank-roguelike.xiaosang.cc/) · [源码](https://github.com/holynova/tank-roguelike)
 
-![GitHub Pages 二维码](qrcode.png)
+![铁甲回廊 · Iron Corridor：真实页面截图](./assets/readme/screenshot.png)
 
-## 操作
+## 可以做什么
 
-| 操作 | 按键 |
-| --- | --- |
-| 驾驶 | `W` `A` `S` `D` / 方向键 |
-| 瞄准 / 开火 | 鼠标 / 左键 / `空格` |
-| 冲刺 | `Shift` / `F` |
-| 切换武器 | 滚轮 / `Q` `E` |
-| 暂停 | `ESC` / `P` |
+- 鼠标瞄准，键盘移动、冲刺与切换武器。
+- 每局强化与永久升级形成两层成长。
 
-## 开发
+## 怎么玩
+
+WASD / 方向键驾驶，鼠标瞄准，左键 / 空格开火；Shift / F冲刺，Q/E或滚轮切换武器，Esc / P暂停。
+
+## 本地运行
 
 ```bash
-npm install
-npm run dev      # 本地开发
-npm run build    # 类型检查 + 打包到 dist/
+npm ci
+npm run dev
+# 生成生产产物
+npm run build
 ```
 
-Phaser 3 + TypeScript + Vite；美术、字体、音效均来自 Kenney（CC0）。
+游戏素材来自Kenney，具体资源与使用方式见 `public/`；代码许可声明以仓库文件为准。
+
+<img src="./assets/readme/qr.png" width="144" alt="扫码打开https://tank-roguelike.xiaosang.cc/">
+
+## 发布
+
+```bash
+npm run build
+npx --yes wrangler@4.128.0 deploy --config wrangler.jsonc
+```
+
+从 `master` 同一提交在本地手动发布到Cloudflare Workers。正式地址：[https://tank-roguelike.xiaosang.cc/](https://tank-roguelike.xiaosang.cc/)。
