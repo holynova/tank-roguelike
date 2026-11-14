@@ -9,7 +9,7 @@ import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { Bullet, type BulletOpts } from '../entities/Bullet';
 import { Pickup, type PickupId } from '../entities/Pickup';
-import { ENEMIES, enemyPool, scaledStats, type EnemyDef } from '../data/enemies';
+import { ENEMIES, enemyPool, scaledStats, bossForDepth, type EnemyDef } from '../data/enemies';
 import { audioOf } from '../core/audio';
 import { Hud } from '../ui/Hud';
 import { PixelText } from '../ui/PixelText';
@@ -103,7 +103,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.startDepth();
-    this.hud.banner(`DEPTH ${this.run.depth}`, this.run.isBossDepth() ? 'WARNING' : '清除所有敌方单位');
+    this.hud.banner(`第 ${this.run.depth} 层`, this.run.isBossDepth() ? '警告' : '清除所有敌方单位');
   }
 
   /** Static bezel: a steel frame around the battlefield plus a status strip. */
@@ -281,7 +281,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.waveTimer = 0;
     this.hud.setWave(count, index, 1);
-    this.hud.banner(`WAVE ${index}`, `${count} 辆敌对单位`);
+    this.hud.banner(`第 ${index} 波`, `${count} 辆敌对单位`);
   }
 
   private pickEnemyKind(pool: EnemyDef[]): EnemyDef {
@@ -300,7 +300,7 @@ export class GameScene extends Phaser.Scene {
     const audio = audioOf(this);
     audio.play('bossRoar');
     audio.setIntensity(1);
-    this.hud.banner('WARNING', '钢铁霸主出现');
+    this.hud.banner('警告', `${bossForDepth(this.run.depth).name}出现`);
     this.time.delayedCall(1400, () => {
       const spot = this.pickSpawnPoint(BLOCK * 8) ?? this.pickSpawnPoint(0);
       if (spot) this.spawnEnemy('boss', spot.x, spot.y, false);
@@ -312,7 +312,7 @@ export class GameScene extends Phaser.Scene {
 
   override update(_t: number, delta: number) {
     const dt = Math.min(48, delta) / 1000;
-    if (this.run.phase === 'dead' || this.run.phase === 'victory' || this.run.phase === 'draft') return;
+    if (this.run.phase === 'dead' || this.run.phase === 'victory' || this.run.phase === 'draft' || this.run.phase === 'paused') return;
 
     this.run.elapsed = (performance.now() - this.run.startedAt) / 1000;
     this.player.update(dt, this.aimPoint());
@@ -462,7 +462,7 @@ export class GameScene extends Phaser.Scene {
     this.waveState = 'idle';
     const audio = audioOf(this);
     audio.play('waveClear');
-    this.hud.banner('DEPTH CLEAR', '选择一项强化');
+    this.hud.banner('本层已清空', '选择一项强化');
     if (this.run.depth >= 30) {
       this.run.finish('victory');
       this.cb.onRunEnd(this.run, true);
@@ -541,7 +541,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   spawnEnemy(kind: string, x: number, y: number, elite: boolean) {
-    const def = ENEMIES[kind as keyof typeof ENEMIES] ?? ENEMIES.scout;
+    const def =
+      kind === 'boss' ? bossForDepth(this.run.depth) : (ENEMIES[kind as keyof typeof ENEMIES] ?? ENEMIES.scout);
     const e = new Enemy(this, def, scaledStats(def, this.run.depth), x, y, elite);
     this.enemies.push(e);
     if (kind === 'boss') {
@@ -614,7 +615,7 @@ export class GameScene extends Phaser.Scene {
     e.hp -= amount;
     this.run.damageDealt += amount;
     e.flash(crit);
-    this.floatText(e.x, e.y - BLOCK * 0.8, Math.round(amount), crit ? 0xfcd424 : 0xfcfcfc, crit);
+    this.floatText(e.x, e.y - BLOCK * 0.8, Math.round(amount), crit ? 0xfcd424 : 0xfcfcfc);
     if (e.isBoss) {
       this.run.bossHp = Math.max(0, e.hp);
       this.hud.setBossHp(e.hp / e.maxHp);
@@ -646,7 +647,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     if (this.run.stats.timeSlowOnKill > 0 && this.run.rng.bool(this.run.stats.timeSlowOnKill)) {
-      this.applyTimeSlow(1.2);
+      this.applyTimeSlow(1.4);
     }
 
     if (e.isBoss) {
@@ -659,7 +660,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.run.grantXp(e.def.xp)) {
-      this.hud.toast(`等级提升 · LV${this.run.level}`);
+      this.hud.toast(`等级提升 LV${this.run.level}`);
       this.run.enqueueDraft('levelup');
       this.time.delayedCall(260, () => this.pumpDrafts());
     }
@@ -825,9 +826,9 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  floatText(x: number, y: number, value: number, color: number, big = false) {
+  floatText(x: number, y: number, value: number, color: number) {
     const t = new PixelText(this, x, y, `${value}`, {
-      scale: big ? 4 : 3,
+      scale: 3,
       color,
       depth: LAYER.fx + 5,
     });
@@ -842,7 +843,9 @@ export class GameScene extends Phaser.Scene {
     this.physics.world.timeScale = 0.4;
     this.time.timeScale = 0.5;
     this.tweens.timeScale = 0.6;
-    this.time.delayedCall(seconds * 1000, () => {
+    // delayedCall runs on the (slowed) game clock, so scale the delay down to
+    // keep `seconds` in real time
+    this.time.delayedCall(seconds * 1000 * this.time.timeScale, () => {
       this.physics.world.timeScale = 1;
       this.time.timeScale = 1;
       this.tweens.timeScale = 1;

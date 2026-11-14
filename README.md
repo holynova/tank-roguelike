@@ -1,21 +1,21 @@
-# 铁甲回廊 · Iron Corridor
+# 铁甲回廊 — Iron Corridor
 
 在程序化回廊中驾驶坦克作战，以三选一强化和废料升级挑战更深层地牢。
 
 A tank dungeon roguelike with procedural corridors, upgrades, bosses and scrap progression.
 
-[在线体验](https://tank-roguelike.xiaosang.cc/) · [源码](https://github.com/holynova/tank-roguelike)
+[在线体验](https://tank-roguelike.xiaosang.cc/)、[源码](https://github.com/holynova/tank-roguelike)
 
-![铁甲回廊 · Iron Corridor：真实页面截图](./assets/readme/screenshot.png)
+![铁甲回廊 — Iron Corridor：真实页面截图](./assets/readme/screenshot.png)
 
 ## 可以做什么
 
-- 鼠标瞄准，键盘移动、冲刺与切换武器。
+- 鼠标瞄准，键盘移动与冲刺；精英掉落的星星可临时提升火力。
 - 每局强化与永久升级形成两层成长。
 
 ## 怎么玩
 
-WASD / 方向键驾驶，鼠标瞄准，左键 / 空格开火；Shift / F冲刺，Q/E或滚轮切换武器，Esc / P暂停。
+WASD / 方向键驾驶，鼠标瞄准，左键 / 空格开火；Shift / F 冲刺，Esc / P 暂停。
 
 ## 本地运行
 

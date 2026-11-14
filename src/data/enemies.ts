@@ -112,8 +112,8 @@ export function enemyPool(depth: number): EnemyDef[] {
 export function bossForDepth(depth: number): EnemyDef {
   const base = ENEMIES.boss;
   if (depth < 10) return base;
-  if (depth < 20) return { ...base, name: '钢铁霸主 II · 重装', hp: base.hp + 700, bulletDamage: base.bulletDamage + 4, speed: base.speed + 8 };
-  return { ...base, name: '终焉协议 · 泰坦', hp: base.hp + 1900, bulletDamage: base.bulletDamage + 9, speed: base.speed + 16 };
+  if (depth < 20) return { ...base, name: '钢铁霸主 II — 重装', hp: base.hp + 700, bulletDamage: base.bulletDamage + 4, speed: base.speed + 8 };
+  return { ...base, name: '终焉协议 — 泰坦', hp: base.hp + 1900, bulletDamage: base.bulletDamage + 9, speed: base.speed + 16 };
 }
 
 export function scaledStats(def: EnemyDef, depth: number) {

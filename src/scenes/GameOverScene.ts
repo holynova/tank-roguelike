@@ -87,24 +87,26 @@ export class GameOverScene extends Phaser.Scene {
       void vt;
     });
 
-    // build summary
-    const owned = Object.entries(this.run.owned).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    // build summary (top 6 fit the frame; longer builds get an ellipsis)
+    const ownedEntries = Object.entries(this.run.owned).sort((a, b) => b[1] - a[1]);
+    const owned = ownedEntries.slice(0, 6);
     new PixelCjk(this, W / 2, 396, '本局强化', {
       scale: 2, px: 12, color: COLORS.steel, depth: LAYER.ui + 1, align: 'center',
     });
     new PixelCjk(
       this, W / 2, 432,
       owned.length
-        ? owned.map(([id, n]) => `${UPGRADE_NAMES[id] ?? id}${n > 1 ? ` ×${n}` : ''}`).join('   ')
+        ? owned.map(([id, n]) => `${UPGRADE_NAMES[id] ?? id}${n > 1 ? ` ×${n}` : ''}`).join('   ') +
+          (ownedEntries.length > 6 ? ' …' : '')
         : '（无）',
       { scale: 1, px: 12, color: 0xc7d5e0, depth: LAYER.ui + 1, align: 'center' },
     );
 
-    new PixelCjk(this, W / 2, 474, `获得废料 +${this.run.scrap}  ·  可在军械库兑换永久强化`, {
+    new PixelCjk(this, W / 2, 474, `获得废料 +${this.run.scrap}，可在军械库兑换永久强化`, {
       scale: 2, px: 12, color: COLORS.amber, depth: LAYER.ui + 1, align: 'center',
     });
 
-    const list = new FcList(this, W / 2, 552, 64);
+    const list = new FcList(this, W / 2, 544, 64);
     list.add('再次出击', () => {
       audio.play('uiSelect');
       this.scene.stop();
@@ -114,9 +116,13 @@ export class GameOverScene extends Phaser.Scene {
       audio.play('uiSelect');
       this.scene.stop();
       this.onMenu();
-    }, { width: 300, height: 50, cjk: true, accent: COLORS.rust });
+    }, { width: 300, height: 50, cjk: true });
     // the buttons live in the scene root, so they need a depth of their own
     for (const b of list.buttons) b.container.setDepth(LAYER.ui + 1);
+
+    new PixelCjk(this, W / 2, 650, '上下选择 空格确认 R 再次出击 ESC 返回主菜单', {
+      scale: 1, px: 12, color: COLORS.steel, depth: LAYER.ui + 1, align: 'center',
+    });
 
     const onKey = (e: KeyboardEvent) => {
       if (e.code === 'ArrowUp' || e.code === 'KeyW') list.move(-1);

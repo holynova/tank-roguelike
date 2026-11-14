@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { VIEW, LAYER, COLORS } from '../core/constants';
-import { PixelText } from '../ui/PixelText';
 import { PixelCjk } from '../ui/PixelCjk';
 import { audioOf } from '../core/audio';
 import type { RunState } from '../systems/RunState';
@@ -22,6 +21,7 @@ export class DraftScene extends Phaser.Scene {
   private returnTo!: string;
   private cards: { container: Phaser.GameObjects.Container; upgrade: Upgrade; frame: Phaser.GameObjects.Graphics }[] = [];
   private index = 0;
+  private chosen = false;
   private resolve?: (id: string) => void;
 
   constructor() {
@@ -37,6 +37,7 @@ export class DraftScene extends Phaser.Scene {
   create() {
     this.cards = [];
     this.index = 0;
+    this.chosen = false;
     const s = this;
     const audio = audioOf(this);
     audio.resume();
@@ -54,10 +55,10 @@ export class DraftScene extends Phaser.Scene {
     new PixelCjk(this, W / 2, 128, isLevel ? '等级提升' : '突破奖励', {
       scale: 4, px: 14, color: isLevel ? COLORS.amber : COLORS.mint, depth: LAYER.ui, align: 'center',
     });
-    new PixelText(this, W / 2, 168, isLevel ? `LV ${this.run.level}` : `DEPTH ${this.run.depth}`, {
-      scale: 3, color: isLevel ? COLORS.amber : COLORS.mint, depth: LAYER.ui, align: 'center',
+    new PixelCjk(this, W / 2, 172, isLevel ? `第 ${this.run.level} 级` : `第 ${this.run.depth} 层`, {
+      scale: 2, px: 12, color: isLevel ? COLORS.amber : COLORS.mint, depth: LAYER.ui, align: 'center',
     });
-    new PixelCjk(this, W / 2, 206, isLevel ? '选择一项强化以继续战斗' : '本层通关，选择一项强化进入下一深度', {
+    new PixelCjk(this, W / 2, 206, isLevel ? '选择一项强化以继续战斗' : '本层通关，选择一项强化进入下一层', {
       scale: 1, px: 12, color: 0x8fa3b4, depth: LAYER.ui, align: 'center',
     });
 
@@ -95,8 +96,8 @@ export class DraftScene extends Phaser.Scene {
       });
     });
 
-    const hint = new PixelText(this, W / 2, H - 34, 'A D SWITCH   SPACE CONFIRM   R RANDOM', {
-      scale: 2, color: COLORS.steel, depth: LAYER.ui, align: 'center',
+    const hint = new PixelCjk(this, W / 2, H - 34, 'A/D 切换  空格确认  数字键直接选择  R 随机切换', {
+      scale: 1, px: 12, color: COLORS.steel, depth: LAYER.ui, align: 'center',
     });
     void hint;
 
@@ -107,6 +108,9 @@ export class DraftScene extends Phaser.Scene {
     kb.on('keydown-D', () => this.move(1));
     kb.on('keydown-SPACE', () => this.choose(this.index));
     kb.on('keydown-ENTER', () => this.choose(this.index));
+    kb.on('keydown-ONE', () => this.choose(0));
+    kb.on('keydown-TWO', () => this.choose(1));
+    kb.on('keydown-THREE', () => this.choose(2));
     kb.on('keydown-R', () => {
       const n = this.cards.length;
       if (n > 1) {
@@ -142,25 +146,25 @@ export class DraftScene extends Phaser.Scene {
     const name = new PixelCjk(this, 0, -h / 2 + 74, u.name, {
       scale: 2, px: 12, color: COLORS.bone, depth: LAYER.ui, align: 'center',
     });
-    const en = new PixelText(this, 0, -h / 2 + 106, u.nameEn, {
-      scale: 1, color: 0x5d7285, depth: LAYER.ui, align: 'center',
+    const en = new PixelCjk(this, 0, -h / 2 + 106, u.nameEn, {
+      scale: 1, px: 12, color: 0x5d7285, depth: LAYER.ui, align: 'center',
     });
     const rarity = new PixelCjk(this, 0, -h / 2 + 132, RARITY_LABEL[u.rarity], {
-      scale: 1, px: 11, color, depth: LAYER.ui, align: 'center',
+      scale: 1, px: 12, color, depth: LAYER.ui, align: 'center',
     });
     const desc = new PixelCjk(this, 0, -h / 2 + 176, u.desc, {
-      scale: 1, px: 11, color: 0xc7d5e0, depth: LAYER.ui, align: 'center',
+      scale: 1, px: 12, color: 0xc7d5e0, depth: LAYER.ui, align: 'center',
     });
     c.add([name.container, en.container, rarity.container, desc.container]);
 
     if (stacks > 0) {
-      const owned = new PixelCjk(this, 0, h / 2 - 76, `已持有 ${stacks} 层`, {
-        scale: 1, px: 11, color: 0x7cc7ff, depth: LAYER.ui, align: 'center',
+      const owned = new PixelCjk(this, 0, h / 2 - 72, `已持有 ${stacks} 层`, {
+        scale: 1, px: 12, color: 0x7cc7ff, depth: LAYER.ui, align: 'center',
       });
       c.add(owned.container);
     }
-    const key = new PixelText(this, 0, h / 2 - 30, `[${this.cards.length + 1}]`, {
-      scale: 2, color: 0x3d5060, depth: LAYER.ui, align: 'center',
+    const key = new PixelCjk(this, 0, h / 2 - 30, `[${this.cards.length + 1}]`, {
+      scale: 1, px: 12, color: 0x3d5060, depth: LAYER.ui, align: 'center',
     });
     c.add(key.container);
 
@@ -173,7 +177,7 @@ export class DraftScene extends Phaser.Scene {
       const startX = -((total * pw + (total - 1) * gap) / 2);
       for (let i = 0; i < total; i++) {
         pips.fillStyle(i < stacks ? color : 0x2b3946, 1);
-        pips.fillRect(x + startX + i * (pw + gap), y + h / 2 - 56, pw, 8);
+        pips.fillRect(startX + i * (pw + gap), h / 2 - 56, pw, 8);
       }
       c.add(pips);
     }
@@ -225,8 +229,12 @@ export class DraftScene extends Phaser.Scene {
   }
 
   private choose(i: number) {
+    // the scene lingers ~280ms on the pick animation; without this guard a
+    // second keypress or click applies the upgrade twice
+    if (this.chosen) return;
     const card = this.cards[i];
     if (!card) return;
+    this.chosen = true;
     audioOf(this).play('upgrade');
     const others = this.cards.filter((_, k) => k !== i);
     this.tweens.add({ targets: others.map((c) => c.container), alpha: 0, scale: 0.8, duration: 200 });

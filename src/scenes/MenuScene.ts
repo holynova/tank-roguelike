@@ -64,13 +64,23 @@ export class MenuScene extends Phaser.Scene {
     const readyAt = this.time.now + 250;
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
       if (this.time.now < readyAt) return;
-      if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+      // On the play tab A/D type into the seed field, so only the arrow keys
+      // switch tabs there; everywhere else A/D switch too.
+      if (e.code === 'ArrowRight' || (e.code === 'KeyD' && this.tab !== 'play')) {
         this.setTab(order[(order.indexOf(this.tab) + 1) % order.length]);
-      } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+      } else if (e.code === 'ArrowLeft' || (e.code === 'KeyA' && this.tab !== 'play')) {
         this.setTab(order[(order.indexOf(this.tab) + order.length - 1) % order.length]);
       } else if (this.tab === 'play' && (e.code === 'Space' || e.code === 'Enter')) {
         e.preventDefault();
         this.startRun();
+      } else if (this.tab === 'play') {
+        // Seed input, bound once here: buildPlay used to add a fresh listener
+        // on every visit, so each keypress typed once per visit.
+        if (e.key === 'Backspace') this.seedInput = this.seedInput.slice(0, -1);
+        else if (this.seedInput.length < 24 && e.key.length === 1 && /[a-zA-Z0-9]/.test(e.key)) this.seedInput += e.key;
+        else return;
+        this.seedLabel.setText(this.seedInput || '留空 = 随机');
+        this.seedLabel.setColor(this.seedInput ? COLORS.bone : 0x4f6274);
       }
     });
   }
@@ -97,10 +107,10 @@ export class MenuScene extends Phaser.Scene {
   private buildHeader() {
     const cx = W / 2;
     const title = new PixelCjk(this, cx, 46, '铁甲回廊', {
-      scale: 3, px: 14, color: COLORS.amber, depth: LAYER.ui, align: 'center',
+      scale: 4, px: 14, color: COLORS.amber, depth: LAYER.ui, align: 'center',
     });
-    const sub = new PixelText(this, cx, 88, 'IRON CORRIDOR', {
-      scale: 2, color: COLORS.bone, depth: LAYER.ui, align: 'center',
+    const sub = new PixelCjk(this, cx, 92, 'IRON CORRIDOR', {
+      scale: 2, px: 12, color: COLORS.bone, depth: LAYER.ui, align: 'center',
     });
     this.root.add([title.container, sub.container]);
   }
@@ -173,21 +183,23 @@ export class MenuScene extends Phaser.Scene {
     });
     c.add(heading.container);
 
-    // seed row
+    // seed row: the box is drawn first, then the caption as an in-box prefix
+    // and the value after it (the caption used to sit under the opaque box,
+    // and the value started on top of it)
     const seedY = 286;
-    const seedLabel = new PixelCjk(this, cx - 300, seedY - 8, '种子', {
+    const box = this.add.graphics();
+    box.fillStyle(0x000000, 1);
+    box.fillRect(cx - 300, seedY - 12, 400, 34);
+    box.lineStyle(2, 0x3c3c3c, 1);
+    box.strokeRect(cx - 300, seedY - 12, 400, 34);
+    c.add(box);
+
+    const seedLabel = new PixelCjk(this, cx - 300 + 8, seedY - 6, '种子', {
       scale: 1, px: 12, color: COLORS.steel, depth: LAYER.ui, align: 'left',
     });
     c.add(seedLabel.container);
 
-    const box = this.add.graphics();
-    box.fillStyle(0x000000, 1);
-    box.fillRect(cx - 300, seedY - 12, 420, 34);
-    box.lineStyle(2, 0x3c3c3c, 1);
-    box.strokeRect(cx - 300, seedY - 12, 420, 34);
-    c.add(box);
-
-    this.seedLabel = new PixelCjk(this, cx - 300 + 8, seedY - 6, this.seedInput || '留空 = 随机', {
+    this.seedLabel = new PixelCjk(this, cx - 300 + 40, seedY - 6, this.seedInput || '留空 = 随机', {
       scale: 1, px: 12, color: this.seedInput ? COLORS.bone : 0x4f6274, depth: LAYER.ui, align: 'left',
     });
     c.add(this.seedLabel.container);
@@ -208,14 +220,6 @@ export class MenuScene extends Phaser.Scene {
     });
     c.add([reroll.container, clearSeed.container]);
 
-    this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
-      if (this.tab !== 'play' || !this.body) return;
-      if (e.key === 'Backspace') this.seedInput = this.seedInput.slice(0, -1);
-      else if (e.key.length === 1 && /[a-zA-Z0-9]/.test(e.key)) this.seedInput += e.key;
-      else return;
-      this.seedLabel.setText(this.seedInput || '留空 = 随机');
-      this.seedLabel.setColor(this.seedInput ? COLORS.bone : 0x4f6274);
-    });
 
     const start = new FcButton(this, cx, 400, '进 入 回 廊', {
       width: 420, height: 64, cjk: true, onClick: () => this.startRun(),
@@ -223,7 +227,7 @@ export class MenuScene extends Phaser.Scene {
     start.container.setScale(1.25);
     c.add(start.container);
 
-    const stats = new PixelCjk(this, cx, 470, `出击 ${m.runs} 次   ·   最深 ${m.bestDepth} 层   ·   最高击杀 ${m.bestKills}`, {
+    const stats = new PixelCjk(this, cx, 470, `出击 ${m.runs} 次，最深 ${m.bestDepth} 层，最高击杀 ${m.bestKills}`, {
       scale: 1, px: 12, color: COLORS.steel, depth: LAYER.ui, align: 'center',
     });
     const scrap = new PixelCjk(this, cx, 502, `可用废料 ${m.scrap}`, {
@@ -231,8 +235,8 @@ export class MenuScene extends Phaser.Scene {
     });
     c.add([stats.container, scrap.container]);
 
-    const hint = new PixelText(this, cx, 556, 'ENTER START    A D SWITCH TAB', {
-      scale: 2, color: 0x4f6274, depth: LAYER.ui, align: 'center',
+    const hint = new PixelCjk(this, cx, 556, '回车开始  方向键切换标签页', {
+      scale: 1, px: 12, color: 0x4f6274, depth: LAYER.ui, align: 'center',
     });
     c.add(hint.container);
 
@@ -266,8 +270,8 @@ export class MenuScene extends Phaser.Scene {
     const cx = W / 2;
     const m = meta();
 
-    const head = new PixelCjk(this, cx - 336, 222, '军械库 · 永久强化', {
-      scale: 2, px: 13, color: COLORS.bone, depth: LAYER.ui, align: 'left',
+    const head = new PixelCjk(this, cx - 336, 222, '军械库 — 永久强化', {
+      scale: 3, px: 13, color: COLORS.bone, depth: LAYER.ui, align: 'left',
     });
     const scrap = new PixelCjk(this, cx + 336, 224, `废料 ${m.scrap}`, {
       scale: 2, px: 12, color: COLORS.amber, depth: LAYER.ui, align: 'right',
@@ -325,8 +329,8 @@ export class MenuScene extends Phaser.Scene {
     const name = new PixelCjk(this, x - w / 2 + 16, y - 32, def.name, {
       scale: 2, px: 12, color: COLORS.bone, depth: LAYER.ui, align: 'left',
     });
-    const desc = new PixelCjk(this, x - w / 2 + 16, y - 2, def.desc(Math.min(level, def.max - 1)), {
-      scale: 1, px: 11, color: 0x8fa3b4, depth: LAYER.ui, align: 'left',
+    const desc = new PixelCjk(this, x - w / 2 + 16, y - 2, def.desc(level), {
+      scale: 1, px: 12, color: 0x8fa3b4, depth: LAYER.ui, align: 'left',
     });
     c.add([name.container, desc.container]);
 
@@ -340,9 +344,10 @@ export class MenuScene extends Phaser.Scene {
       c.add(pip);
     }
 
-    const btn = new FcButton(this, x + w / 2 - 62, y, maxed ? 'MAX' : String(cost), {
+    const btn = new FcButton(this, x + w / 2 - 62, y, maxed ? '已满级' : String(cost), {
       width: 108,
       height: 38,
+      cjk: true,
       accent: maxed ? COLORS.mint : afford ? COLORS.amber : 0x3c3c3c,
       onClick: () => {
         const m2 = meta();
@@ -366,7 +371,7 @@ export class MenuScene extends Phaser.Scene {
     const cx = W / 2;
 
     const head = new PixelCjk(this, cx, 210, '战绩档案', {
-      scale: 4, px: 13, color: COLORS.bone, depth: LAYER.ui, align: 'center',
+      scale: 3, px: 13, color: COLORS.bone, depth: LAYER.ui, align: 'center',
     });
     c.add(head.container);
 
@@ -388,11 +393,10 @@ export class MenuScene extends Phaser.Scene {
       this.buildTally(c, cx - 184 + col * 368, startY + r * 62, row[0], row[1], row[2]);
     });
 
-    const reset = new FcButton(this, cx, 590, this.confirmReset ? 'CONFIRM WIPE' : 'WIPE SAVE DATA', {
-      width: 320, height: 44, accent: COLORS.rust, onClick: () => {
+    const reset = new FcButton(this, cx, 590, this.confirmReset ? '确认清除？' : '清除存档', {
+      width: 320, height: 44, cjk: true, accent: COLORS.rust, onClick: () => {
         if (!this.confirmReset) {
           this.confirmReset = true;
-          reset.setSub('');
           this.buildBody();
           audioOf(this).play('uiMove');
           return;
@@ -402,6 +406,10 @@ export class MenuScene extends Phaser.Scene {
       },
     });
     c.add(reset.container);
+    const wipeNote = new PixelCjk(this, cx, 626, '清除后永久强化、废料与战绩全部消失，不可恢复。', {
+      scale: 1, px: 12, color: COLORS.rust, depth: LAYER.ui, align: 'center',
+    });
+    c.add(wipeNote.container);
   }
 
   // ------------------------------------------------------------------ help
@@ -416,10 +424,9 @@ export class MenuScene extends Phaser.Scene {
 
     const keys: [string, string][] = [
       ['WASD', '驾驶战车'],
-      ['MOUSE', '炮塔独立瞄准'],
-      ['CLICK/SPACE', '开火（可按住连射）'],
+      ['鼠标', '炮塔独立瞄准'],
+      ['左键/空格', '开火（可按住连射）'],
       ['SHIFT/F', '冲刺，带短暂无敌'],
-      ['WHEEL/QE', '切换武器'],
       ['ESC/P', '暂停'],
     ];
     keys.forEach(([k, v], i) => {
@@ -427,7 +434,7 @@ export class MenuScene extends Phaser.Scene {
       const row = Math.floor(i / 2);
       const x = cx - 344 + col * 360;
       const y = 284 + row * 46;
-      const kt = new PixelText(this, x, y, k, { scale: 2, color: COLORS.amber, depth: LAYER.ui, align: 'left' });
+      const kt = new PixelCjk(this, x, y, k, { scale: 2, px: 12, color: COLORS.amber, depth: LAYER.ui, align: 'left' });
       // the key column is fixed width so the descriptions line up
       const vt = new PixelCjk(this, x + 200, y, v, { scale: 1, px: 12, color: 0xc7d5e0, depth: LAYER.ui, align: 'left' });
       c.add([kt.container, vt.container]);
@@ -436,12 +443,12 @@ export class MenuScene extends Phaser.Scene {
     const rules: string[] = [
       '每层回廊随机生成，包含 3 波敌对装甲；每 5 层出现 BOSS「钢铁霸主」。',
       '击杀获得经验，升级与通关都会给出三选一强化，共 25 种，可叠加。',
-      '木制掩体可被炮弹摧毁，金属掩体不可摧毁；油桶区会持续造成伤害。',
-      '掉落物包含废料、修复包、护盾、原子弹与临时武器，靠近自动吸取。',
+      '木制掩体可被炮弹摧毁，金属掩体不可摧毁；水域与树林无法通行，油桶区会持续造成伤害。',
+      '掉落物包含废料、修复包、护盾、原子弹、冻结与临时武器，靠近自动吸取。',
       '坦克被击毁即本局结束 —— 没有读档。永久强化只消耗废料。',
     ];
     rules.forEach((r, i) => {
-      const t = new PixelCjk(this, cx - 344, 442 + i * 34, `· ${r}`, {
+      const t = new PixelCjk(this, cx - 344, 442 + i * 34, `• ${r}`, {
         scale: 1, px: 12, color: 0x8fa3b4, depth: LAYER.ui, align: 'left',
       });
       c.add(t.container);

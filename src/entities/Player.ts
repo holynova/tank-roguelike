@@ -45,6 +45,7 @@ export class Player {
   private invulnTimer = 0;
   private hurtCooldown = 0;
   private shieldTimer = 0;
+  private weaponBoostTimer = 0;
   private dashTimer = 0;
   private dashCooldownTimers: number[] = [];
   private regenAcc = 0;
@@ -132,9 +133,12 @@ export class Player {
     this.vy = 0;
   }
 
-  heal(amount: number) {
-    if (amount <= 0) return;
+  /** Heals, returning the amount actually restored (0 when already full). */
+  heal(amount: number): number {
+    if (amount <= 0) return 0;
+    const before = this.hp;
     this.hp = Math.min(this.maxHp, this.hp + amount);
+    return this.hp - before;
   }
 
   markHurt() {
@@ -143,6 +147,11 @@ export class Player {
 
   grantShield(ms = 7000) {
     this.shieldTimer = Math.max(this.shieldTimer, ms / 1000);
+  }
+
+  /** Temporary firepower boost (the star pickup): +50% damage for a while. */
+  grantWeaponBoost(seconds = 12) {
+    this.weaponBoostTimer = Math.max(this.weaponBoostTimer, seconds);
   }
 
   private get fireInterval(): number {
@@ -163,6 +172,7 @@ export class Player {
     this.invulnTimer = Math.max(0, this.invulnTimer - dt);
     this.hurtCooldown = Math.max(0, this.hurtCooldown - dt);
     this.shieldTimer = Math.max(0, this.shieldTimer - dt);
+    this.weaponBoostTimer = Math.max(0, this.weaponBoostTimer - dt);
     this.dashTimer = Math.max(0, this.dashTimer - dt);
     this.recoil = Math.max(0, this.recoil - dt * 6);
 
@@ -221,6 +231,8 @@ export class Player {
         e.contactCooldown = 1;
         this.markHurt();
         this.scene.damagePlayer(e.contactDamageValue(), e.x, e.y);
+        const thorns = this.run.stats.thorns;
+        if (thorns > 0) this.scene.damageEnemy(e, e.contactDamageValue() * thorns, false, this.x, this.y);
       }
     }
     const fixed = resolveCircle(this.scene.arenaRef(), { x: this.x, y: this.y }, this.radius);
@@ -257,14 +269,14 @@ export class Player {
     const muzzleDist = this.radius + 10;
     const baseAngle = this.aimAssist(this.turretAngle, 0.14);
     const crit = this.scene.run.rng.bool(st.critChance);
-    const dmg = st.damage * (crit ? st.critMult : 1);
+    const dmg = st.damage * (crit ? st.critMult : 1) * (this.weaponBoostTimer > 0 ? 1.5 : 1);
     const color = crit ? 0xfcd424 : 0xfce0a8;
 
     this.scene.spawnPlayerBullet({
       x: this.x + Math.cos(baseAngle) * muzzleDist,
       y: this.y + Math.sin(baseAngle) * muzzleDist,
       angle: baseAngle,
-      speed: 760,
+      speed: st.bulletSpeed,
       damage: dmg,
       pierce: st.pierce,
       color,
@@ -363,6 +375,7 @@ export class Player {
     this.sprite.setTexture('tank_player');
     this.sprite.setFrame(idx);
     this.sprite.setPosition(this.x, this.y);
+    this.sprite.setTint(this.weaponBoostTimer > 0 ? 0xfcd424 : 0xffffff);
     this.shadow.setPosition(this.x, this.y).setVisible(this.shieldTimer <= 0);
     this.shield.setPosition(this.x, this.y).setVisible(this.shieldTimer > 0);
 

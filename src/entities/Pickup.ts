@@ -112,9 +112,9 @@ export class Pickup {
       }
       case 'heal': {
         const amount = this.premium ? 40 : 22;
-        player.heal(amount);
+        const healed = player.heal(amount);
         audioOf(this.scene).play('powerUp');
-        this.scene.floatText(player.x, player.y - 30, amount, 0x58d854);
+        if (healed > 0) this.scene.floatText(player.x, player.y - 30, healed, 0x58d854);
         break;
       }
       case 'shield':
@@ -133,9 +133,11 @@ export class Pickup {
         this.scene.shake(520, 0.02);
         break;
       case 'weapon':
-        player.hp = Math.min(player.maxHp, player.hp + 8);
+        // the star used to heal 8 HP while claiming a firepower upgrade;
+        // it now really is a temporary weapon boost
+        player.grantWeaponBoost(12);
         audioOf(this.scene).play('powerUp');
-        this.scene.toast('火力升级');
+        this.scene.toast('火力提升 12 秒');
         break;
     }
     this.expire();
