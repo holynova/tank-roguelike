@@ -18,12 +18,12 @@ export interface PlayerStats {
   dashCharges: number;
   dashInvuln: number;
   regen: number; // hp/sec
-  lifesteal: number; // chance to heal 1 on kill
+  lifesteal: number; // chance to heal 2 on kill
   ricochet: number; // wall bounce chance
   magnet: number; // pickup radius bonus
   scrapBonus: number;
   thorns: number; // reflect fraction
-  critChain: number; // extra crits on kill
+  critChain: number; // fraction of the victim's max HP chained to nearby enemies on a crit kill (x0.1)
   overdrive: number; // fire rate gain while at low hp
   explosiveShells: number;
   homing: number;
@@ -97,7 +97,7 @@ export const UPGRADES: readonly Upgrade[] = [
   up({ id: 'magnet', name: '磁力吸盘', nameEn: 'Magnet', desc: '拾取范围 +45%', kind: 'stat', icon: '🧲', color: 0xe8eef3, rarity: 'common', max: 4, apply: (s) => { s.magnet *= 1.45; } }),
   up({ id: 'regen', name: '纳米修复', nameEn: 'Nanorepair', desc: '每秒回复 0.7 生命', kind: 'stat', icon: '🩹', color: 0x6fe3b0, rarity: 'rare', max: 6, apply: (s) => { s.regen += 0.7; } }),
   up({ id: 'salvage', name: '拾荒者', nameEn: 'Salvager', desc: '废料获取 +35%', kind: 'stat', icon: '💰', color: 0xffb028, rarity: 'common', max: 5, apply: (s) => { s.scrapBonus += 0.35; } }),
-  up({ id: 'thorns', name: '尖刺装甲', nameEn: 'Spiked Armour', desc: '反弹 30% 近战伤害', kind: 'stat', icon: '🪡', color: 0xe8eef3, rarity: 'rare', max: 4, apply: (s) => { s.thorns += 0.3; } }),
+  up({ id: 'thorns', name: '尖刺装甲', nameEn: 'Spiked Armour', desc: '反弹 30% 受到的伤害给附近敌人', kind: 'stat', icon: '🪡', color: 0xe8eef3, rarity: 'rare', max: 4, apply: (s) => { s.thorns += 0.3; } }),
 
   up({ id: 'multishot', name: '分裂炮管', nameEn: 'Split Barrel', desc: '每次多发射 1 枚炮弹', kind: 'weapon', icon: '🔱', color: 0xffb028, rarity: 'rare', max: 4, apply: (s) => { s.bulletsPerShot += 1; s.spread = Math.max(s.spread, 9); } }),
   up({ id: 'spread', name: '霰弹', nameEn: 'Scatter', desc: '散射角度 +8°', kind: 'weapon', icon: '🌫', color: 0xffb028, rarity: 'rare', max: 4, apply: (s) => { s.spread += 8; } }),
@@ -110,12 +110,12 @@ export const UPGRADES: readonly Upgrade[] = [
 
   up({ id: 'dash', name: '冲刺充能', nameEn: 'Dash Recharge', desc: '冲刺冷却 -22%', kind: 'trait', icon: '💨', color: 0x6fe3b0, rarity: 'rare', max: 4, apply: (s) => { s.dashCooldown *= 0.78; } }),
   up({ id: 'dashcharges', name: '双段推进', nameEn: 'Twin Thrusters', desc: '冲刺次数 +1', kind: 'trait', icon: '🛫', color: 0x6fe3b0, rarity: 'epic', max: 2, apply: (s) => { s.dashCharges += 1; } }),
-  up({ id: 'invuln', name: '相位护盾', nameEn: 'Phase Shield', desc: '冲刺无敌时间 +0.18s', kind: 'trait', icon: '🌀', color: 0x6fe3b0, rarity: 'rare', max: 3, apply: (s) => { s.dashInvuln += 0.18; } }),
+  up({ id: 'invuln', name: '相位护盾', nameEn: 'Phase Shield', desc: '冲刺无敌时间 +0.18 秒', kind: 'trait', icon: '🌀', color: 0x6fe3b0, rarity: 'rare', max: 3, apply: (s) => { s.dashInvuln += 0.18; } }),
   up({ id: 'lifesteal', name: '虹吸涂层', nameEn: 'Siphon Coat', desc: '击杀 22% 概率回复 2 生命', kind: 'trait', icon: '🩸', color: 0xff4d5e, rarity: 'epic', max: 4, apply: (s) => { s.lifesteal += 0.22; } }),
-  up({ id: 'overdrive', name: '背水一战', nameEn: 'Overdrive', desc: '生命低于 40% 时装填速度 +22%', kind: 'trait', icon: '🔥', color: 0xe0532a, rarity: 'epic', max: 3, apply: (s) => { s.overdrive += 0.22; } }),
+  up({ id: 'overdrive', name: '背水一战', nameEn: 'Overdrive', desc: '生命低于 40% 时装填时间 -22%', kind: 'trait', icon: '🔥', color: 0xe0532a, rarity: 'epic', max: 3, apply: (s) => { s.overdrive += 0.22; } }),
   up({ id: 'slowaura', name: '履带碾压', nameEn: 'Tread Crusher', desc: '周围敌人减速 22%', kind: 'trait', icon: '🪨', color: 0x6fe3b0, rarity: 'epic', max: 3, apply: (s) => { s.slowAura += 0.22; } }),
-  up({ id: 'timeslow', name: '残像引擎', nameEn: 'Afterimage', desc: '击杀时 12% 概率时间减速 1.4s', kind: 'trait', icon: '⏳', color: 0x9b8cff, rarity: 'legendary', max: 3, apply: (s) => { s.timeSlowOnKill += 0.12; } }),
-  up({ id: 'chain', name: '连锁反应', nameEn: 'Chain Reaction', desc: '暴击击杀时对周围敌人造成 60% 伤害', kind: 'trait', icon: '⛓', color: 0xff4d5e, rarity: 'legendary', max: 2, apply: (s) => { s.critChain += 0.6; } }),
+  up({ id: 'timeslow', name: '残像引擎', nameEn: 'Afterimage', desc: '击杀时 12% 概率时间减速 1.4 秒', kind: 'trait', icon: '⏳', color: 0x9b8cff, rarity: 'legendary', max: 3, apply: (s) => { s.timeSlowOnKill += 0.12; } }),
+  up({ id: 'chain', name: '连锁反应', nameEn: 'Chain Reaction', desc: '暴击击杀：周围敌人受 6% 生命伤害', kind: 'trait', icon: '⛓', color: 0xff4d5e, rarity: 'legendary', max: 2, apply: (s) => { s.critChain += 0.6; } }),
 ];
 
 const byId = new Map(UPGRADES.map((u) => [u.id, u]));

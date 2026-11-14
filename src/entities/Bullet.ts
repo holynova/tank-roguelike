@@ -102,6 +102,32 @@ export class Bullet {
       return;
     }
 
+    // 追踪弹头: steer gently toward the nearest enemy in range
+    if (this.fromPlayer) {
+      const homing = this.scene.run.stats.homing;
+      if (homing > 0) {
+        let best: Enemy | null = null;
+        let bestD = 420;
+        for (const e of this.scene.enemiesList()) {
+          if (e.dead) continue;
+          const d = Phaser.Math.Distance.Between(this.x, this.y, e.x, e.y);
+          if (d < bestD) {
+            bestD = d;
+            best = e;
+          }
+        }
+        if (best) {
+          const want = Math.atan2(best.y - this.y, best.x - this.x);
+          const turn = Phaser.Math.Angle.Wrap(want - this.angle);
+          const applied = Phaser.Math.Clamp(turn, -homing * dt, homing * dt);
+          this.angle += applied;
+          this.vx = Math.cos(this.angle) * this.speed;
+          this.vy = Math.sin(this.angle) * this.speed;
+          this.sprite.setRotation(this.angle - Math.PI / 2);
+        }
+      }
+    }
+
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
@@ -114,6 +140,17 @@ export class Bullet {
     // terrain
     const cell = cellAt(arena, Math.floor(this.x / BLOCK), Math.floor(this.y / BLOCK));
     if (this.blocks(cell)) {
+      // 跳弹: deflect off the wall instead of expiring (player shells only)
+      if (this.fromPlayer && this.scene.run.stats.ricochet > 0 && this.scene.run.rng.bool(this.scene.run.stats.ricochet)) {
+        if (Math.abs(this.vx) >= Math.abs(this.vy)) this.vx = -this.vx;
+        else this.vy = -this.vy;
+        this.angle = Math.atan2(this.vy, this.vx);
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.sprite.setRotation(this.angle - Math.PI / 2);
+        audioOf(this.scene).play('hitWall');
+        return;
+      }
       if (this.fromPlayer && cell === Cell.Brick) this.scene.damageBrickAt(this.x, this.y);
       audioOf(this.scene).play('hitWall');
       this.scene.spawnDebris(this.x, this.y, 4);

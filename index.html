@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#0b0f14" />
     <meta name="description" content="铁甲回廊 Iron Corridor — 坦克大战 × Roguelike 网页游戏" />
-    <title>铁甲回廊 · Iron Corridor</title>
+    <title>铁甲回廊 — Iron Corridor</title>
     <style>
       :root {
         --ink: #0b0f14;
         --steel: #171f27;
-        --amber: #ffb028;
-        --rust: #e0532a;
-        --mint: #6fe3b0;
+        --amber: #fcd424;
+        --rust: #e45820;
       }
       * { box-sizing: border-box; }
       html, body {
@@ -95,7 +94,7 @@
         white-space: nowrap;
       }
       #links a:hover { color: var(--amber); border-bottom-color: var(--amber); }
-      @media (max-width: 560px) { #links { font-size: 10px; gap: 10px; } }
+      @media (max-width: 560px) { #links { gap: 10px; } }
 
       /* The battlefield is a fixed 800x720 landscape panel. On a phone held
          upright it ends up tiny, so ask for a turn rather than let the player
@@ -141,11 +140,11 @@
     </div>
     <div id="rotate">
       <div class="icon"></div>
-      <div>请横屏游玩 · ROTATE YOUR PHONE</div>
+      <div>请横屏游玩</div>
     </div>
     <nav id="links">
       <a href="https://github.com/holynova/tank-roguelike" target="_blank" rel="noopener">GitHub</a>
-      <a href="https://tank-roguelike.xiaosang.cc/" target="_blank" rel="noopener">Play Online</a>
+      <a href="https://tank-roguelike.xiaosang.cc/" target="_blank" rel="noopener">在线游玩</a>
     </nav>
     <noscript>本游戏需要启用 JavaScript。</noscript>
     <script type="module" src="/src/main.ts"></script>

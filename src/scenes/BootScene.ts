@@ -31,26 +31,18 @@ export class BootScene extends Phaser.Scene {
       img(`t_${t}`, `t_${t}.png`);
     }
     img('eagle', 'eagle.png');
-    img('base_wall', 'base_wall.png');
-    img('life', 'life.png');
     img('bullet', 'bullet.png');
     img('spawn', 'spawn.png');
     img('shield', 'shield.png');
     for (let i = 0; i < 3; i++) img(`boom${i}`, `boom${i}.png`);
-    for (const p of ['star', 'nuke', 'shield', 'freeze', 'upgrade', 'repair', 'scrap']) {
+    for (const p of ['star', 'nuke', 'shield', 'freeze', 'repair', 'scrap']) {
       img(`pu_${p}`, `pu_${p}.png`);
     }
     this.load.spritesheet('pxfont', 'assets/fc/font.png', { frameWidth: 8, frameHeight: 8 });
 
-    // SFX
-    const sfx = [
-      'zap1', 'zap2', 'zapThreeToneDown', 'zapThreeToneUp', 'laser1', 'laser3', 'laser5', 'laser8',
-      'powerUp1', 'powerUp2', 'powerUp3', 'powerUp8', 'threeTone1', 'threeTone2', 'highUp', 'highDown',
-      'lowDown', 'phaserUp1', 'phaserDown1', 'pepSound1', 'pepSound2', 'spaceTrash1', 'tone1', 'twoTone1',
-      'footstep00', 'footstep03', 'footstep05', 'metalPot1', 'metalPot3', 'chop', 'doorClose_1', 'doorOpen_2',
-      'metalLatch', 'cloth2',
-    ];
-    for (const key of sfx) this.load.audio(key, `assets/audio/sfx/${key}.ogg`);
+    // NOTE: the 36 .ogg files under assets/audio/sfx used to be preloaded here,
+    // but nothing plays them — every sound is synthesised by AudioMan — so the
+    // preload only slowed the boot. The files stay in the repo, unloaded.
 
     this.load.on('progress', (p: number) => stage(0.05 + p * 0.9, p < 0.4 ? '铺设走廊…' : p < 0.8 ? '校准炮塔…' : '装填弹药…'));
     this.load.once('complete', () => stage(1, '就绪'));

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { saveMeta } from './meta';
 
 type SfxKey =
   | 'shoot'
@@ -61,11 +62,15 @@ export class AudioMan {
 
   private volumes() {
     const raw = localStorage.getItem('iron-corridor/meta/v1');
-    let v = { master: 0.8, music: 0.5, sfx: 0.85 };
+    let v = { master: 0.8, music: 0.55, sfx: 0.8, muted: false };
     if (raw) {
       try {
-        const parsed = JSON.parse(raw) as { volumes?: typeof v };
+        const parsed = JSON.parse(raw) as {
+          volumes?: { master: number; music: number; sfx: number };
+          muted?: boolean;
+        };
         if (parsed.volumes) v = { ...v, ...parsed.volumes };
+        if (typeof parsed.muted === 'boolean') v.muted = parsed.muted;
       } catch {
         /* keep defaults */
       }
@@ -76,9 +81,18 @@ export class AudioMan {
   applyVolumes() {
     if (!this.ctx) return;
     const v = this.volumes();
-    this.master.gain.value = v.master;
+    this.master.gain.value = v.muted ? 0 : v.master;
     this.musicBus.gain.value = v.music;
     this.sfxBus.gain.value = v.sfx;
+  }
+
+  isMuted(): boolean {
+    return this.volumes().muted;
+  }
+
+  setMuted(m: boolean) {
+    saveMeta({ muted: m });
+    this.applyVolumes();
   }
 
   private buildNoise() {

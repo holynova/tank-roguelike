@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { VIEW, BLOCK, ARENA_H, FIELD_X, FIELD_Y, FOOT_Y, LAYER, COLORS } from '../core/constants';
-import { PixelText } from './PixelText';
+import { PixelCjk } from './PixelCjk';
 import { fcFrame, FcList } from './fc';
 import { audioOf } from '../core/audio';
 import type { GameScene } from '../scenes/GameScene';
@@ -13,32 +13,33 @@ const H = VIEW.height;
 /**
  * Status strip.
  *
- * Laid out like the console HUD: score and lives on the left, stage in the
- * middle, remaining enemies on the right — all in the bitmap font so it reads
- * as part of the machine rather than a web overlay.
+ * Laid out like the console HUD: score on the left, stage in the middle,
+ * remaining enemies on the right. Labels render through the CJK rasteriser —
+ * the 8x8 bitmap strip has no Chinese glyphs, so anything in Chinese passed
+ * to it used to render as invisible gaps.
  */
 export class Hud {
   private scene: GameScene;
   private run: RunState;
 
-  private scoreText!: PixelText;
-  private stageText!: PixelText;
-  private waveText!: PixelText;
-  private scrapText!: PixelText;
-  private statusText!: PixelText;
-  private livesIcons: Phaser.GameObjects.Image[] = [];
+  private scoreText!: PixelCjk;
+  private stageText!: PixelCjk;
+  private waveText!: PixelCjk;
+  private scrapText!: PixelCjk;
+  private statusText!: PixelCjk;
   private hpG!: Phaser.GameObjects.Graphics;
-  private hpText!: PixelText;
+  private hpText!: PixelCjk;
   private dashG!: Phaser.GameObjects.Graphics;
   private minimap!: Phaser.GameObjects.Graphics;
   private miniTimer = 0;
   private bossBar!: Phaser.GameObjects.Graphics;
-  private bossName!: PixelText;
-  private bannerTitle!: PixelText;
-  private bannerSub!: PixelText;
-  private toastText!: PixelText;
-  private hintText!: PixelText;
+  private bossName!: PixelCjk;
+  private bannerTitle!: PixelCjk;
+  private bannerSub!: PixelCjk;
+  private toastText!: PixelCjk;
+  private hintText!: PixelCjk;
   private pauseLayer?: Phaser.GameObjects.Container;
+  private abandonArmed = false;
   private waveTotal = 0;
   private waveIndex = 0;
   private waveProgress = 0;
@@ -68,33 +69,24 @@ export class Hud {
     g.fillStyle(0x000000, 1);
     g.fillRect(0, FOOT_Y, W, 4);
 
-    // left column: score + lives, the way the console stacks its flags
-    this.scoreText = new PixelText(s, 16, 8, 'SCORE 0', { scale: 3, color: 0xfcfcfc, depth: LAYER.ui });
-    new PixelText(s, 16, 40, 'LIFE', { scale: 2, color: 0xbcbcbc, depth: LAYER.ui });
-    this.livesIcons = [];
-    for (let i = 0; i < 4; i++) {
-      const img = s.add
-        .image(68 + i * 24, 38, 'life')
-        .setOrigin(0, 0)
-        .setScale(1.5)
-        .setDepth(LAYER.ui);
-      this.livesIcons.push(img);
-    }
+    // left column: score. (There used to be a LIFE row here, but the run ends
+    // on the first death — there are no spare lives, so the icons lied.)
+    this.scoreText = new PixelCjk(s, 16, 26, '分数 0', { scale: 2, px: 12, color: 0xfcfcfc, depth: LAYER.ui });
 
     // centre: stage + wave + hull
-    this.stageText = new PixelText(s, W / 2, 8, 'STAGE 1', {
-      scale: 3, color: 0xfcd424, depth: LAYER.ui, align: 'center',
+    this.stageText = new PixelCjk(s, W / 2, 26, '第 1 层', {
+      scale: 2, px: 12, color: 0xfcd424, depth: LAYER.ui, align: 'center',
     });
-    this.waveText = new PixelText(s, W / 2, 38, '', { scale: 2, color: 0xbcbcbc, depth: LAYER.ui, align: 'center' });
+    this.waveText = new PixelCjk(s, W / 2, 46, '', { scale: 1, px: 12, color: 0xbcbcbc, depth: LAYER.ui, align: 'center' });
     this.hpG = s.add.graphics().setDepth(LAYER.ui).setScrollFactor(0);
-    this.hpText = new PixelText(s, W / 2 - 100, 56, '', { scale: 1, color: 0xbcbcbc, depth: LAYER.ui, align: 'right' });
+    this.hpText = new PixelCjk(s, W / 2 - 100, 64, '', { scale: 1, px: 12, color: 0xbcbcbc, depth: LAYER.ui, align: 'right' });
 
     // right column: scrap, level, enemies left
-    this.scrapText = new PixelText(s, W - 16, 8, 'SCRAP 0', {
-      scale: 3, color: 0xfcd424, depth: LAYER.ui, align: 'right',
+    this.scrapText = new PixelCjk(s, W - 16, 26, '废料 0', {
+      scale: 2, px: 12, color: 0xfcd424, depth: LAYER.ui, align: 'right',
     });
-    this.statusText = new PixelText(s, W - 16, 40, 'LV 1', {
-      scale: 2, color: 0xbcbcbc, depth: LAYER.ui, align: 'right',
+    this.statusText = new PixelCjk(s, W - 16, 46, 'LV 1', {
+      scale: 1, px: 12, color: 0xbcbcbc, depth: LAYER.ui, align: 'right',
     });
 
     // minimap sits under the status strip on the left margin
@@ -106,30 +98,30 @@ export class Hud {
 
     // boss bar
     this.bossBar = s.add.graphics().setDepth(LAYER.ui).setScrollFactor(0).setVisible(false);
-    this.bossName = new PixelText(s, W / 2, FIELD_Y + 8, '', {
-      scale: 3, color: 0xe45820, depth: LAYER.ui + 1, align: 'center',
+    this.bossName = new PixelCjk(s, W / 2, FIELD_Y + 16, '', {
+      scale: 2, px: 12, color: 0xe45820, depth: LAYER.ui + 1, align: 'center',
     });
     this.bossName.container.setVisible(false);
 
     // banners
-    this.bannerTitle = new PixelText(s, W / 2, H * 0.28, '', {
-      scale: 6, color: 0xfcfcfc, depth: LAYER.ui + 2, align: 'center',
+    this.bannerTitle = new PixelCjk(s, W / 2, H * 0.28, '', {
+      scale: 4, px: 14, color: 0xfcfcfc, depth: LAYER.ui + 2, align: 'center',
     });
-    this.bannerSub = new PixelText(s, W / 2, H * 0.28 + 56, '', {
-      scale: 3, color: 0xfcd424, depth: LAYER.ui + 2, align: 'center',
+    this.bannerSub = new PixelCjk(s, W / 2, H * 0.28 + 56, '', {
+      scale: 2, px: 12, color: 0xfcd424, depth: LAYER.ui + 2, align: 'center',
     });
-    this.toastText = new PixelText(s, W / 2, H * 0.18, '', {
-      scale: 3, color: 0x58d854, depth: LAYER.ui + 2, align: 'center',
+    this.toastText = new PixelCjk(s, W / 2, 148, '', {
+      scale: 2, px: 12, color: 0x58d854, depth: LAYER.ui + 2, align: 'center',
     });
-    this.hintText = new PixelText(s, W / 2, FOOT_Y + 6, 'WASD MOVE   MOUSE AIM   FIRE   SHIFT DASH   ESC PAUSE', {
-      scale: 1, color: 0x7c7c7c, depth: LAYER.ui + 1, align: 'center',
+    this.hintText = new PixelCjk(s, W / 2, FOOT_Y + 16, 'WASD 移动 鼠标瞄准 左键/空格开火 SHIFT 冲刺 ESC 暂停', {
+      scale: 1, px: 12, color: 0x7c7c7c, depth: LAYER.ui + 1, align: 'center',
     });
   }
 
   // ------------------------------------------------------------------ api
 
   setDepth(depth: number) {
-    this.stageText.setText(`STAGE ${depth}`);
+    this.stageText.setText(`第 ${depth} 层`);
     this.waveTotal = 0;
     this.waveIndex = 0;
     this.waveProgress = 0;
@@ -146,13 +138,13 @@ export class Hud {
   private refreshWave() {
     const run = this.run;
     if (run.isBossDepth()) {
-      this.waveText.setText(run.bossActive ? 'BOSS SECTOR' : 'INCOMING...');
-      this.statusText.setText(run.bossActive ? 'LV? BOSS' : 'LV?');
+      this.waveText.setText(run.bossActive ? '首领战' : '首领即将出现');
+      this.statusText.setText(`LV${this.run.level}`);
       return;
     }
     const remaining = Math.max(0, Math.round(this.waveTotal * (1 - this.waveProgress)));
-    this.waveText.setText(`WAVE ${Math.max(1, this.waveIndex)} / 3`);
-    this.statusText.setText(`LV${this.run.level} ENEMY ${remaining}`);
+    this.waveText.setText(`第 ${Math.max(1, this.waveIndex)} 波 / 共 3 波`);
+    this.statusText.setText(`LV${this.run.level} 敌军 ${remaining}`);
   }
 
   setBossHp(ratio: number) {
@@ -202,12 +194,8 @@ export class Hud {
     const p = this.scene.playerRef();
     const ratio = Phaser.Math.Clamp(p.hp / run.stats.maxHp, 0, 1);
 
-    this.scoreText.setText(`SCORE ${run.score}`);
-    this.scrapText.setText(`SCRAP ${run.scrap}`);
-
-    for (let i = 0; i < this.livesIcons.length; i++) {
-      this.livesIcons[i].setVisible(i < Math.max(0, run.lives - 1) && i < 4);
-    }
+    this.scoreText.setText(`分数 ${run.score}`);
+    this.scrapText.setText(`废料 ${run.scrap}`);
 
     // hull bar sits just under the wave counter
     const bw = 180;
@@ -323,27 +311,40 @@ export class Hud {
     frame.setScrollFactor(0);
     c.add(frame);
 
-    const title = new PixelText(s, W / 2, H / 2 - 108, 'PAUSE', {
-      scale: 5, color: COLORS.amber, depth: 901, align: 'center',
+    const title = new PixelCjk(s, W / 2, H / 2 - 108, '已暂停', {
+      scale: 3, px: 13, color: COLORS.amber, depth: 901, align: 'center',
     });
-    const sub = new PixelText(s, W / 2, H / 2 - 64, `DEPTH ${this.run.depth}   SCORE ${this.run.score}`, {
-      scale: 2, color: COLORS.bone, depth: 901, align: 'center',
+    const sub = new PixelCjk(s, W / 2, H / 2 - 64, `第 ${this.run.depth} 层  分数 ${this.run.score}`, {
+      scale: 1, px: 12, color: COLORS.bone, depth: 901, align: 'center',
     });
-    const hint = new PixelText(s, W / 2, H / 2 + 112, 'UP DOWN SELECT   SPACE CONFIRM', {
-      scale: 2, color: COLORS.steel, depth: 901, align: 'center',
+    const hint = new PixelCjk(s, W / 2, H / 2 + 132, '上下选择 空格确认', {
+      scale: 1, px: 12, color: COLORS.steel, depth: 901, align: 'center',
     });
     c.add([title.container, sub.container, hint.container]);
 
-    const list = new FcList(s, W / 2, H / 2 + 12, 56);
-    list.add('RESUME', () => {
+    const list = new FcList(s, W / 2, H / 2 - 18, 56);
+    list.add('继续游戏', () => {
       audioOf(s).play('uiSelect');
       s.events.emit('resume-game');
-    }, { width: 320, height: 46 });
-    list.add('ABANDON RUN', () => {
+    }, { width: 320, height: 46, cjk: true });
+    // Abandoning a run is irreversible, so the first click only arms it.
+    list.add(this.abandonArmed ? '确认放弃本局？' : '放弃本局', () => {
       audioOf(s).play('uiSelect');
+      if (!this.abandonArmed) {
+        this.abandonArmed = true;
+        this.hidePause();
+        this.showPause();
+        return;
+      }
       this.run.finish('dead');
       s.events.emit('quit-to-menu');
-    }, { width: 320, height: 46, accent: COLORS.rust });
+    }, { width: 320, height: 46, cjk: true, accent: COLORS.rust });
+    list.add(`静音：${audioOf(s).isMuted() ? '开' : '关'}`, () => {
+      audioOf(s).play('uiSelect');
+      audioOf(s).setMuted(!audioOf(s).isMuted());
+      this.hidePause();
+      this.showPause();
+    }, { width: 320, height: 46, cjk: true });
     for (const b of list.buttons) c.add(b.container);
 
     // one shared selection for pointer and keyboard
@@ -359,6 +360,7 @@ export class Hud {
 
   hidePause() {
     if (!this.pauseLayer) return;
+    this.abandonArmed = false;
     this.pauseLayer.destroy(true);
     this.pauseLayer = undefined;
   }

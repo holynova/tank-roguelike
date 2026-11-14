@@ -32,8 +32,6 @@ export class RunState {
   /** drafts earned but not yet shown; they queue up one at a time */
   draftQueue: ('levelup' | 'blessing')[] = [];
   pendingDepths = 0;
-  /** remaining lives, shown as tank icons in the status strip */
-  lives = 3;
   bossActive = false;
   bossHp = 0;
   bossName = '';
